@@ -1,247 +1,93 @@
+# Keystroke Dynamics Web Authenticator (PHP + JS)
 
-# Multi-Factor Biometric Authentication System
-## Keystroke Dynamics and Face ID Verification using PHP and JavaScript
-
-![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
-![Backend](https://img.shields.io/badge/PHP-Backend-purple)
-![Frontend](https://img.shields.io/badge/JavaScript-Frontend-yellow)
-![Security](https://img.shields.io/badge/Security-Biometric-green)
-
-## Overview
-
-This project implements a multi-factor biometric authentication system that strengthens traditional username and password based login mechanisms. The system integrates two biometric verification methods:
-
-1. Keystroke Dynamics (behavioral biometric)
-2. Face ID recognition using webcam capture
-
-The goal is to increase authentication reliability by verifying both **how a user types** and **who the user physically is**.
-
-Even if credentials are compromised, attackers cannot easily replicate both the typing rhythm and the facial identity of the legitimate user.
-
-The system is implemented using lightweight web technologies including **PHP, JavaScript, HTML, and browser APIs**, making it deployable on standard web servers without specialized hardware.
+A secure user authentication system that leverages **Keystroke Dynamics**—a behavioral biometric based on typing rhythm—to verify identities during login and registration. Implemented using PHP and vanilla JavaScript for browser-side timing capture.
 
 ---
 
-## Key Features
-
-- Username and password authentication
-- Behavioral biometric verification using keystroke dynamics
-- Face ID verification using webcam capture
-- Multi-factor authentication workflow
-- Lightweight implementation suitable for browser environments
-- Easy integration with existing web systems
-- Real-time biometric comparison
+## Problem Statement
+Traditional username-password systems are vulnerable to brute-force attacks and data leaks. Keystroke dynamics adds a biometric verification layer to increase security without additional hardware.
 
 ---
 
-## System Architecture
-
-![System Architecture](screens/system_architecture.png)
-
-The architecture consists of:
-
-- Client-side interface for capturing typing behavior
-- Webcam based face capture module
-- PHP backend verification engine
-- Biometric comparison algorithms
-- Authentication decision module
-
----
-
-## Authentication Workflow
-
-![Authentication Workflow](screens/authentication_workflow.png)
-
-### Registration Phase
-
-During registration the system collects:
-
-- Username
-- Password
-- Keystroke timing patterns
-- Face ID image
-
-The typing rhythm and facial identity become the user's biometric profile stored for future verification.
-
-### Login Phase
-
-During login the system performs the following steps:
-
-1. User enters username and password
-2. JavaScript records typing timing information
-3. Webcam captures the user's facial image
-4. Data is sent to the backend PHP authentication module
-5. Keystroke dynamics are compared with stored patterns
-6. Face identity is verified
-7. If both checks pass, authentication is successful
-
----
-
-## Keystroke Dynamics Algorithm
-
-The system evaluates typing similarity using an average absolute difference method.
-
-Difference calculation:
-
-Difference = Σ |Ti − Ui| / n
-
-Where:
-
-- Ti = Stored keystroke timing value
-- Ui = Current user timing value
-- n = Number of keystrokes
-
-Authentication rule:
-
-If Difference < Threshold → User Verified  
-Else → Authentication Failed
-
-This approach allows real-time biometric verification with low computational cost.
+## Relation to Design and Analysis of Algorithms (DAA)
+- **Similarity Measurement**: The algorithm calculates average absolute differences between timing vectors, optimized with `O(n)` traversal.
+- **Threshold-Based Classification**: Simple and efficient, allowing real-time decisions.
+- **DAA Topics Applied**:
+  - Greedy strategy for nearest-match classification.
+  - Time complexity and performance optimization.
 
 ---
 
 ## Time and Space Complexity
+| Operation                  | Time Complexity | Space Complexity |
+|---------------------------|------------------|------------------|
+| Typing data capture (JS)  | O(n)             | O(n)             |
+| Difference calculation    | O(n)             | O(n)             |
+| PHP file parsing          | O(m * n)         | O(m * n)         |
 
-| Operation | Time Complexity | Space Complexity |
-|-----------|----------------|----------------|
-Typing Data Capture | O(n) | O(n) |
-Similarity Computation | O(n) | O(n) |
-Face Verification | O(f) | O(f) |
-User Data Processing | O(m × n) | O(m × n) |
-
-Where:
-
-- n = number of keystrokes
-- m = number of users
-- f = facial feature vector size
+> Where `n` is the number of keystrokes, and `m` is the number of users.
 
 ---
 
-## User Interface
+## Installation & Run
+1. Install XAMPP or any local server with PHP.
+2. Copy files into `htdocs/keystroke-auth`.
+3. Start Apache and open: `http://localhost/keystroke-auth/register.html`
+4. Register, then test with `login.html`.
 
-### Registration Page
+---
 
-The registration interface allows new users to create an account and capture biometric data required for authentication.
+## Sample Output (from `auth.php`)
+```
+Hold Difference: 15.2
+DD Difference: 19.7
+UD Difference: 10.4
+Total Difference: 15.1
+Authentication Successful!
+```
+---
 
+## User Interfaces
+
+### Register Page  
 ![Register Page](screens/register_page.png)
 
-The page performs the following tasks:
-
-- Captures username and password
-- Records keystroke timing data while typing
-- Captures facial image using the webcam
-- Stores biometric profile
-
-### Login Page
-
-The login interface verifies the user using stored biometric information.
-
+### Login Page  
 ![Login Page](screens/login_page.png)
 
-The login page performs:
+---
 
-- Password verification
-- Keystroke pattern comparison
-- Face identity verification
-
-Authentication is granted only when all verification checks match the stored biometric profile.
+## Real-World Applications
+- **Cybersecurity**: Used in high-security portals for continuous user verification.
+- **Banking/Finance**: Adds an invisible layer of authentication.
+- **Workplace Systems**: Prevents unauthorized access even if credentials are stolen.
 
 ---
 
-## Security Advantages
-
-This system improves login security by introducing multiple biometric verification layers.
-
-Security benefits include:
-
-- Protection against credential theft
-- Resistance to brute force login attempts
-- Prevention of account takeover
-- Behavioral verification of legitimate users
-
-Since attackers must replicate both typing rhythm and facial identity, unauthorized access becomes significantly more difficult.
+## Cybersecurity Impact
+- **Difficult to spoof**: Unlike passwords, keystroke behavior is hard to mimic.
+- **No extra hardware**: Behavior-based biometric.
+- **Challenge for Hackers**:
+  - High entropy of behavioral data.
+  - Time-sensitive precision needed to bypass the system.
 
 ---
 
-## Real World Applications
-
-The authentication approach implemented in this project can be applied to:
-
-- Online banking systems
-- Enterprise security platforms
-- Government authentication portals
-- Secure enterprise login systems
-- Zero-trust security environments
-
----
-
-## Installation
-
-### Step 1: Install XAMPP
-
-Download and install XAMPP from:
-
-https://www.apachefriends.org
-
-Start the Apache server.
-
-### Step 2: Place the Project
-
-Move the project folder to:
-
-xampp/htdocs/keystroke-face-auth
-
-### Step 3: Run the Application
-
-Open the browser and navigate to:
-
-http://localhost/keystroke-face-auth/register.html
-
-Register a user and then test authentication using the login page.
-
----
-
-## Project Structure
-
-```
-Project_Keystroke_Dynamics_Authenticator_HMMs
-
-├── auth.php
-├── register.php
-├── login.html
-├── register.html
-├── users.txt
-├── README.md
-│
-└── screens
-     ├── system_architecture.png
-     ├── authentication_workflow.png
-     ├── register_page.png
-     └── login_page.png
-```
-
----
-
-## Technologies Used
-
-| Technology | Purpose |
-|-----------|--------|
-HTML / CSS | User Interface |
-JavaScript | Keystroke Timing Capture |
-PHP | Backend Authentication |
-Webcam API | Face ID Capture |
-Browser Timing API | Behavioral Biometrics |
+## Advantages
+- Lightweight, works in-browser.
+- Easy integration into existing PHP projects.
+- Transparent to users.
+- Boosts password system without extra effort.
 
 ---
 
 ## License
 
-This project is licensed under the GPL-3.0 License.
+GPL-3.0 license.
 
 ---
 
-## Author
 
-Karthik B
+## Developed by
 
-Developer – Biometric Authentication Systems
+Karthik B  

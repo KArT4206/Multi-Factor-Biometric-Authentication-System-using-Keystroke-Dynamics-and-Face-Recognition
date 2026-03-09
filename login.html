@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Biometric Gatekeeper</title>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        body { font-family: Arial; background-color: #f4f4f9; text-align: center; }
+        .container { margin-top: 50px; display: inline-block; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        video { border-radius: 8px; background: #000; margin: 10px 0; display: none; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; }
+        button { width: 100%; padding: 10px; background: #2196F3; color: white; border: none; cursor: pointer; }
+        #status { font-size: 14px; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Secure Login</h2>
+        <p id="status">Enter credentials to begin</p>
+        
+        <form id="loginForm" action="auth.php" method="post" onsubmit="return handleLogin(event)">
+            <input type="text" name="username" placeholder="Username" required><br>
+            <input type="password" name="password" placeholder="Password" required 
+                   onkeydown="captureTiming(event)" onkeyup="captureTiming(event)"><br>
+            
+            <video id="video" width="320" height="240" autoplay muted></video>
+            
+            <input type="hidden" name="timings" id="timings">
+            <input type="hidden" name="faceDescriptor" id="faceDescriptor">
+            
+            <button type="submit" id="loginBtn">Verify Password & Rhythm</button>
+        </form>
+    </div>
+
+    <script>
+        let keyEvents = [];
+        let step = 1;
+
+        async function initModels() {
+            const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        }
+
+        function captureTiming(e) {
+            keyEvents.push({ type: e.type, key: e.key, time: performance.now() });
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const status = document.getElementById('status');
+
+            if (step === 1) {
+                // Prepare Keystrokes
+                let timings = processTimings();
+                document.getElementById('timings').value = JSON.stringify(timings);
+                
+                // Show Camera for Step 2
+                status.innerText = "Step 1 Passed. Now verifying face...";
+                document.getElementById('video').style.display = "block";
+                btn.innerText = "Scanning Face...";
+                
+                await initModels();
+                const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+                document.getElementById('video').srcObject = stream;
+                
+                step = 2;
+                // Auto-trigger face capture after 2 seconds of camera warm-up
+                setTimeout(captureFaceAndSubmit, 2000);
+            }
+        }
+
+        async function captureFaceAndSubmit() {
+            const video = document.getElementById('video');
+            const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+            
+            if (!detection) {
+                alert("Face not detected. Retrying...");
+                setTimeout(captureFaceAndSubmit, 1000);
+                return;
+            }
+
+            document.getElementById('faceDescriptor').value = JSON.stringify(Array.from(detection.descriptor));
+            document.getElementById('loginForm').submit();
+        }
+
+        function processTimings() {
+            let timings = { holds: [], dds: [] };
+            let downs = keyEvents.filter(e => e.type === 'keydown');
+            let ups = keyEvents.filter(e => e.type === 'keyup');
+            downs.forEach((d, i) => { if(ups[i]) timings.holds.push(ups[i].time - d.time); });
+            for (let i = 1; i < downs.length; i++) timings.dds.push(downs[i].time - downs[i-1].time);
+            return timings;
+        }
+    </script>
+</body>
+</html>

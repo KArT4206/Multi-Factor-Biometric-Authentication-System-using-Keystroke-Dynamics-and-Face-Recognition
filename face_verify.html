@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Step 2: Face Verification</title>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f9;
+            text-align: center;
+            padding-top: 50px;
+        }
+
+        .box {
+            background: white;
+            padding: 20px;
+            display: inline-block;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        video {
+            border-radius: 8px;
+            background: #000;
+        }
+
+        #message {
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="box">
+        <h2>Biometric Verification</h2>
+        <p>Step 2: Please look at the camera</p>
+        <video id="video" width="400" height="300" autoplay muted></video>
+        <div id="message">Initializing face scanner...</div>
+    </div>
+
+    <script>
+        async function startVerification() {
+            const video = document.getElementById('video');
+            const message = document.getElementById('message');
+            let timeLeft = 10; // The 10-second security window
+            let verified = false;
+
+            // 1. Load Models
+            const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+            // 2. Start Camera
+            const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+            video.srcObject = stream;
+
+            // 3. Get the stored face data
+            const response = await fetch('get_stored_face.php');
+            const storedData = await response.json();
+
+            if (storedData.error) {
+                message.innerText = "Session expired. Please login again.";
+                message.className = "error";
+                return;
+            }
+
+            const storedDescriptor = new Float32Array(storedData.descriptor);
+
+            // --- NEW: Countdown Timer Logic ---
+            const countdown = setInterval(() => {
+                if (!verified) {
+                    timeLeft--;
+                    message.innerText = `Scanning... Time remaining: ${timeLeft}s`;
+
+                    if (timeLeft <= 0) {
+                        clearInterval(countdown);
+                        clearInterval(scanInterval);
+                        // Turn off camera stream
+                        stream.getTracks().forEach(track => track.stop());
+                        alert("ACCESS DENIED: Verification Timeout (10s)");
+                        window.location.href = 'login.html';
+                    }
+                }
+            }, 1000);
+
+            // 4. Continuous Scanning
+            const scanInterval = setInterval(async () => {
+                const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+
+                if (detection) {
+                    const distance = faceapi.euclideanDistance(detection.descriptor, storedDescriptor);
+
+                    // Using 0.40 for strict matching (0.25 might be TOO hard to hit)
+                    if (distance < 0.40) {
+                        verified = true;
+                        message.innerText = "✅ Identity Verified! Redirecting...";
+                        clearInterval(countdown);
+                        clearInterval(scanInterval);
+
+                        fetch('verify_final.php')
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    window.location.href = data.redirect;
+                                }
+                            });
+                    } else {
+                        // Show current distance score to help user position themselves
+                        message.innerText = `Scanning... Score: ${distance.toFixed(2)} (Target < 0.40)`;
+                    }
+                }
+            }, 1000);
+        }
+
+        window.onload = startVerification;
+    </script>
+</body>
+
+</html>

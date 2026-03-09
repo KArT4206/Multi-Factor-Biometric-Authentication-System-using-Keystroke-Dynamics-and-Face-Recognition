@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Biometric Auth</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .form-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h2 { margin-bottom: 20px; color: #333; }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 90%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        video {
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            background-color: #000;
+            margin-bottom: 10px;
+        }
+
+        #status {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #45a049;
+        }
+
+        .form-container a {
+            text-decoration: none;
+            color: #4CAF50;
+            font-size: 14px;
+            margin-top: 15px;
+            display: inline-block;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            color: #777;
+        }
+    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <div class="form-container">
+            <h2>Register</h2>
+            <p id="status">Initializing AI Models...</p>
+            
+            <form id="regForm" action="register.php" method="post" onsubmit="return handleRegistration(event)">
+                <video id="video" width="320" height="240" autoplay muted></video>
+                
+                <input type="hidden" name="faceDescriptor" id="faceDescriptor">
+                <input type="hidden" name="timings" id="timings">
+
+                <input type="text" name="username" placeholder="Username" required>
+                <input type="password" name="password" placeholder="Password" required 
+                       onkeydown="captureTiming(event)" onkeyup="captureTiming(event)">
+                
+                <button type="submit" id="submitBtn" disabled>Please Wait...</button>
+            </form>
+            
+            <a href="login.html">Already have an account? Login here.</a>
+        </div>
+    </div>
+
+    <footer>
+        Developed by <strong>Karthik B</strong>
+    </footer>
+
+    <script>
+        let keyEvents = [];
+
+        // 1. Setup Face API and Camera
+        async function setup() {
+            try {
+                const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+                const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+                document.getElementById('video').srcObject = stream;
+                
+                document.getElementById('status').innerText = "Camera Ready - Please look at the screen";
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').innerText = "Register";
+            } catch (err) {
+                document.getElementById('status').innerText = "Error: Camera access denied.";
+                console.error(err);
+            }
+        }
+
+        // 2. Capture Keystroke Events
+        function captureTiming(e) {
+            keyEvents.push({
+                type: e.type,
+                key: e.key,
+                time: performance.now()
+            });
+        }
+
+        // 3. Process Keystroke Data
+        function processTimings() {
+            let timings = { holds: [], dds: [], uds: [] };
+            let lastDown = {};
+
+            keyEvents.forEach(event => {
+                if (event.type === 'keydown') {
+                    if (!lastDown[event.key]) lastDown[event.key] = event.time;
+                } else if (event.type === 'keyup') {
+                    if (lastDown[event.key]) {
+                        timings.holds.push(event.time - lastDown[event.key]);
+                        delete lastDown[event.key];
+                    }
+                }
+            });
+
+            let downs = keyEvents.filter(e => e.type === 'keydown');
+            for (let i = 1; i < downs.length; i++) {
+                timings.dds.push(downs[i].time - downs[i - 1].time);
+            }
+
+            let ups = keyEvents.filter(e => e.type === 'keyup');
+            for (let i = 0; i < ups.length; i++) {
+                if (downs[i + 1]) {
+                    timings.uds.push(downs[i + 1].time - ups[i].time);
+                }
+            }
+            return timings;
+        }
+
+        // 4. Unified Submit Handler
+        async function handleRegistration(event) {
+            event.preventDefault(); // Pause submission to process biometrics
+            const btn = document.getElementById('submitBtn');
+            const video = document.getElementById('video');
+            
+            btn.disabled = true;
+            btn.innerText = "Processing Biometrics...";
+
+            // A. Face Detection
+            const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+            
+            if (!detection) {
+                alert("Face not detected! Please look clearly at the camera.");
+                btn.disabled = false;
+                btn.innerText = "Register";
+                return false;
+            }
+
+            // B. Set hidden inputs
+            document.getElementById('faceDescriptor').value = JSON.stringify(Array.from(detection.descriptor));
+            document.getElementById('timings').value = JSON.stringify(processTimings());
+
+            // C. Final Submit
+            event.target.submit();
+        }
+
+        // Initialize on load
+        window.onload = setup;
+    </script>
+
+</body>
+</html>
