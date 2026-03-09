@@ -242,7 +242,7 @@ This project is licensed under the GPL-3.0 License.
 
 ## Author
 
-Karthik B
-Sai Sathiya Krishna A K
-Adharsh Ramakrishnan 
+- Karthik B
+- Sai Sathiya Krishna A K
+- Adharsh Ramakrishnan 
 
