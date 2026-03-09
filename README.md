@@ -136,8 +136,7 @@ The page performs the following tasks:
 
 The login interface verifies the user using stored biometric information.
 
-![Login Page](screens/login_page1.png)
-[](screens/login_page2.png)
+![Login Page](screens/login_page2.png)
 
 The login page performs:
 
